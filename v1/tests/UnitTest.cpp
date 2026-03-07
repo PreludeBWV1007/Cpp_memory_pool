@@ -100,10 +100,22 @@ void BenchmarkNew(size_t ntimes, size_t nworks, size_t rounds)
 int main()
 {
     HashBucket::initMemoryPool(); // 使用内存池接口前一定要先调用该函数
-	BenchmarkMemoryPool(100, 1, 10); // 测试内存池
-	std::cout << "===========================================================================" << std::endl;
-	std::cout << "===========================================================================" << std::endl;
-	BenchmarkNew(100, 1, 10); // 测试 new delete
-	
+
+	// 多组测试：不同规模 (每轮次数, 线程数, 轮次)。注：v1 多线程下可能存在问题，此处仅做单线程多规模对比
+	struct Config { size_t ntimes, nworks, rounds; const char* name; };
+	Config configs[] = {
+		{ 100, 1, 10, "轻量 1线程 10轮 每轮100次" },
+		{ 1000, 1, 10, "中量 1线程 10轮 每轮1000次" },
+		{ 10000, 1, 5, "大量 1线程 5轮 每轮10000次" },
+		{ 50000, 1, 3, "超大量 1线程 3轮 每轮50000次" },
+	};
+
+	for (const auto& c : configs) {
+		std::cout << "\n========== " << c.name << " ==========" << std::endl;
+		BenchmarkMemoryPool(c.ntimes, c.nworks, c.rounds);
+		std::cout << "-------------------------------------------" << std::endl;
+		BenchmarkNew(c.ntimes, c.nworks, c.rounds);
+	}
+
 	return 0;
 }

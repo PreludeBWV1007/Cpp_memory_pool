@@ -1,0 +1,3 @@
+/home/larryli/projects/memorypool/v1/build/CMakeFiles/MemoryPoolProject.dir
+/home/larryli/projects/memorypool/v1/build/CMakeFiles/edit_cache.dir
+/home/larryli/projects/memorypool/v1/build/CMakeFiles/rebuild_cache.dir
