@@ -69,7 +69,7 @@ flowchart LR
 ```
 
 ### v1 架构图
-![v1 内存池结构](./v1_structure.jpg)
+![v1 内存池结构](.v1/v1_structure.jpg)
 
 ---
 
@@ -94,7 +94,7 @@ flowchart TB
 ```
 
 ### v2 架构图
-![v2 内存池结构](./v2_structure.png)
+![v2 内存池结构](.v2/v2_structure.png)
 
 ---
 
