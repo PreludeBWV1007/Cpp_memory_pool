@@ -1,4 +1,5 @@
 #include "../include/MemoryPool.h"
+#include "../include/PageCache.h"
 #include <iostream>
 #include <vector>
 #include <chrono>
@@ -6,6 +7,9 @@
 #include <iomanip>
 #include <thread>
 #include <array>
+#if defined(__linux__) && defined(__GLIBC__)
+#include <malloc.h>
+#endif
 
 using namespace Kama_memoryPool;
 using namespace std::chrono;
@@ -465,11 +469,76 @@ public:
                       << t.elapsed() << " ms" << std::endl;
         }
     }
+
+    // 5. 内存占用对比：相同分配模式下，内存池从系统申请总量 vs 系统分配器堆占用
+    static void testMemoryUsage()
+    {
+        constexpr size_t NUM_ALLOCS = 80000;
+        const size_t SIZES[] = {8, 16, 32, 64, 128, 256, 512, 1024};
+        const size_t NUM_SIZES = sizeof(SIZES) / sizeof(SIZES[0]);
+
+        std::cout << "\nMemory usage comparison (peak live: " << NUM_ALLOCS
+                  << " blocks, mixed sizes 8~1024 B):" << std::endl;
+
+        size_t poolBytesFromOS = 0;
+        {
+            std::vector<std::pair<void*, size_t>> ptrs;
+            ptrs.reserve(NUM_ALLOCS);
+            for (size_t i = 0; i < NUM_ALLOCS; ++i)
+            {
+                size_t size = SIZES[i % NUM_SIZES];
+                void* p = MemoryPool::allocate(size);
+                ptrs.emplace_back(p, size);
+            }
+            poolBytesFromOS = PageCache::getInstance().getTotalBytesFromOS();
+            for (const auto& [ptr, size] : ptrs)
+                MemoryPool::deallocate(ptr, size);
+        }
+
+#if defined(__linux__) && defined(__GLIBC__)
+        size_t systemArena = 0;
+        {
+            std::vector<std::pair<void*, size_t>> ptrs;
+            ptrs.reserve(NUM_ALLOCS);
+            for (size_t i = 0; i < NUM_ALLOCS; ++i)
+            {
+                size_t size = SIZES[i % NUM_SIZES];
+                void* p = ::malloc(size);
+                ptrs.emplace_back(p, size);
+            }
+            struct mallinfo2 mi = mallinfo2();
+            systemArena = mi.arena;  // 系统分配器从 OS 获得的堆总字节数
+            for (const auto& [ptr, size] : ptrs)
+                ::free(ptr);
+        }
+
+        std::cout << "  Memory Pool (from OS): " << (poolBytesFromOS / 1024) << " KB" << std::endl;
+        std::cout << "  System allocator (arena): " << (systemArena / 1024) << " KB" << std::endl;
+        if (systemArena > 0 && poolBytesFromOS <= systemArena)
+        {
+            double pct = (1.0 - (double)poolBytesFromOS / (double)systemArena) * 100.0;
+            std::cout << "  Memory footprint reduction: " << std::fixed << std::setprecision(1)
+                      << pct << "%" << std::endl;
+        }
+        else if (systemArena > 0)
+        {
+            double pct = ((double)poolBytesFromOS / (double)systemArena - 1.0) * 100.0;
+            std::cout << "  Memory Pool uses " << std::fixed << std::setprecision(1)
+                      << pct << "% more than system (same workload)" << std::endl;
+        }
+#else
+        std::cout << "  Memory Pool (from OS): " << (poolBytesFromOS / 1024) << " KB" << std::endl;
+        std::cout << "  System comparison skipped (mallinfo2 not available on this platform)" << std::endl;
+#endif
+    }
 };
 
 int main() 
 {
     std::cout << "Starting performance tests..." << std::endl;
+
+    // 内存占用对比放在最前执行，保证池从零统计、与系统分配器同一进程内可比
+    PerformanceTest::testMemoryUsage();
     
     // 预热系统
     PerformanceTest::warmup();
@@ -478,6 +547,6 @@ int main()
     PerformanceTest::testSmallAllocation();
     PerformanceTest::testMultiThreaded();
     PerformanceTest::testMixedSizes();
-    
+
     return 0;
 }

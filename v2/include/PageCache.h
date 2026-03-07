@@ -27,6 +27,9 @@ public:
     // 释放span
     void deallocateSpan(void* ptr, size_t numPages);
 
+    // 统计：从系统（mmap）累计申请的总字节数，用于与系统分配器做内存占用对比
+    size_t getTotalBytesFromOS() const { return totalBytesFromOS_; }
+
 private:
     PageCache() = default;
 
@@ -46,6 +49,8 @@ private:
     // 页号到span的映射，用于回收
     std::map<void*, Span*> spanMap_;
     std::mutex mutex_;
+    // 从系统 mmap 累计申请的总字节数（仅 systemAlloc 成功时增加，用于内存占用对比）
+    size_t totalBytesFromOS_{0};
 };
 
 } // namespace memoryPool

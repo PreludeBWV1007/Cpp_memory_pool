@@ -138,6 +138,8 @@ void* PageCache::systemAlloc(size_t numPages)
                      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0); // mmap：匿名、私有、可读写，不依赖文件；失败返回 MAP_FAILED，这里转为 nullptr。
     if (ptr == MAP_FAILED) return nullptr;
 
+    totalBytesFromOS_ += size;
+
     // 清零内存
     memset(ptr, 0, size); // memset：整块清零后再返回，避免未初始化内存。
     return ptr;
