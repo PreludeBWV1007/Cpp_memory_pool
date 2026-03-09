@@ -69,7 +69,7 @@ flowchart LR
 ```
 
 ### v1 架构图
-![v1 内存池结构](v1/v1_structure.jpg)
+![v1 内存池结构](v1/v1_structure.png)
 
 ---
 
